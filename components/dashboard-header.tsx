@@ -1,8 +1,15 @@
 "use client"
 
-import { Wallet, Plus, Settings, Eye, Edit, Calendar, FolderKanban } from "lucide-react"
+import { Wallet, Plus, Settings, Eye, Edit, Calendar, FolderKanban, User, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState } from "react"
 import { AddExpenseDialog } from "./add-expense-dialog"
@@ -12,6 +19,7 @@ import { AddDebtDialog } from "./add-debt-dialog"
 import { AddInstallmentDialog } from "./add-installment-dialog"
 import { ManageCategoriesDialog } from "./manage-categories-dialog"
 import { useViewMode } from "@/lib/view-mode-context"
+import { useAuth } from "@/lib/contexts/auth-context"
 
 interface DashboardHeaderProps {
   selectedMonth: string
@@ -27,6 +35,15 @@ export function DashboardHeader({ selectedMonth, onMonthChange }: DashboardHeade
   const [categoriesDialogOpen, setCategoriesDialogOpen] = useState(false)
 
   const { mode, setMode, isEditorMode } = useViewMode()
+  const { user, signOut } = useAuth()
+
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+    } catch (error) {
+      console.error("Erro ao fazer logout:", error)
+    }
+  }
 
   const generateMonthOptions = () => {
     const months = []
@@ -114,6 +131,27 @@ export function DashboardHeader({ selectedMonth, onMonthChange }: DashboardHeade
               <Button variant="outline" size="icon" onClick={() => setSettingsDialogOpen(true)}>
                 <Settings className="h-4 w-4" />
               </Button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <User className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">Conta</p>
+                      <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="text-red-600">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sair
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
