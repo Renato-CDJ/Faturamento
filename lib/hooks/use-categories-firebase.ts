@@ -47,12 +47,20 @@ export function useCategories() {
     return () => unsubscribe()
   }, [])
 
-  const addCategory = async (name: string, type: "expense" | "debt" | "all" = "expense", color = "#6b7280") => {
+  const addCategory = async (
+    nameOrObject: string | { name: string; type: string; color: string },
+    type?: "expense" | "debt" | "all" | "installment",
+    color?: string,
+  ) => {
     try {
+      // Handle both object and individual parameter formats
+      const categoryData =
+        typeof nameOrObject === "string"
+          ? { name: nameOrObject, type: type || "expense", color: color || "#6b7280" }
+          : { name: nameOrObject.name, type: nameOrObject.type || "expense", color: nameOrObject.color || "#6b7280" }
+
       await addDoc(collection(db, "categories"), {
-        name,
-        type,
-        color,
+        ...categoryData,
         created_at: Timestamp.now(),
       })
     } catch (error: any) {

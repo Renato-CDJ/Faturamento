@@ -95,3 +95,11 @@ export interface Transaction {
   date: string
   created_at: string
 }
+
+export interface Category {
+  id: string
+  name: string
+  type: "all" | "expense" | "debt" | "installment"
+  color: string
+  created_at: string
+}
