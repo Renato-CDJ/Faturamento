@@ -16,59 +16,41 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { useViewMode } from "@/lib/view-mode-context"
+import { useInstallments } from "@/lib/hooks/use-installments-firebase"
 
 export function InstallmentsList() {
   const { isEditorMode } = useViewMode()
+  const { installments, loading, deleteInstallment, updateInstallment } = useInstallments()
+  const [deleteId, setDeleteId] = useState<string | null>(null)
 
-  const [installments, setInstallments] = useState([
-    {
-      id: 1,
-      name: "Notebook Dell",
-      installment: 3,
-      total: 12,
-      value: 450,
-      dueDate: "05/12/2025",
-      paid: false,
-    },
-    {
-      id: 2,
-      name: "Curso Online",
-      installment: 8,
-      total: 10,
-      value: 120,
-      dueDate: "10/12/2025",
-      paid: false,
-    },
-    {
-      id: 3,
-      name: "Celular Samsung",
-      installment: 6,
-      total: 12,
-      value: 280,
-      dueDate: "15/11/2025",
-      paid: true,
-    },
-    {
-      id: 4,
-      name: "Academia",
-      installment: 11,
-      total: 12,
-      value: 150,
-      dueDate: "20/12/2025",
-      paid: false,
-    },
-  ])
-  const [deleteId, setDeleteId] = useState<number | null>(null)
-
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteId !== null) {
-      setInstallments(installments.filter((item) => item.id !== deleteId))
+      await deleteInstallment(deleteId)
       setDeleteId(null)
     }
   }
 
-  const handleEdit = (id: number) => {
+  const handleEdit = (id: string) => {
     console.log("[v0] Edit installment:", id)
+  }
+
+  const handleTogglePaid = async (id: string, currentPaid: boolean) => {
+    try {
+      await updateInstallment(id, { paid: !currentPaid })
+    } catch (error) {
+      console.error("[v0] Error toggling paid status:", error)
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle className="text-foreground">Parcelamentos</CardTitle>
+          <CardDescription className="text-muted-foreground">Carregando...</CardDescription>
+        </CardHeader>
+      </Card>
+    )
   }
 
   return (
@@ -79,51 +61,62 @@ export function InstallmentsList() {
           <CardDescription className="text-muted-foreground">Próximas parcelas a vencer</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {installments.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center justify-between rounded-lg border border-border bg-muted/50 p-4"
-            >
-              <div className="flex items-center gap-3">
-                <div
-                  className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-                    item.paid ? "bg-accent/20 text-accent" : "bg-primary/20 text-primary"
-                  }`}
-                >
-                  {item.paid ? <CheckCircle2 className="h-5 w-5" /> : <Clock className="h-5 w-5" />}
-                </div>
-                <div className="space-y-1">
-                  <p className="font-semibold text-foreground">{item.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Parcela {item.installment}/{item.total} • Vence em {item.dueDate}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <p className="text-lg font-bold text-foreground">R$ {item.value.toFixed(2)}</p>
-                  <Badge variant={item.paid ? "default" : "secondary"} className="mt-1">
-                    {item.paid ? "Pago" : "Pendente"}
-                  </Badge>
-                </div>
-                {isEditorMode && (
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(item.id)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive"
-                      onClick={() => setDeleteId(item.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+          {installments.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">Nenhum parcelamento cadastrado</p>
+          ) : (
+            installments.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between rounded-lg border border-border bg-muted/50 p-4"
+              >
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleTogglePaid(item.id, item.paid)}
+                    className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${
+                      item.paid
+                        ? "bg-accent/20 text-accent hover:bg-accent/30"
+                        : "bg-primary/20 text-primary hover:bg-primary/30"
+                    }`}
+                  >
+                    {item.paid ? <CheckCircle2 className="h-5 w-5" /> : <Clock className="h-5 w-5" />}
+                  </button>
+                  <div className="space-y-1">
+                    <p className="font-semibold text-foreground">{item.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Parcela {item.current_installment}/{item.total_installments} • Vence em{" "}
+                      {new Date(item.due_date).toLocaleDateString("pt-BR")}
+                    </p>
                   </div>
-                )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-foreground">
+                      R$ {item.installment_value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </p>
+                    <Badge variant={item.paid ? "default" : "secondary"} className="mt-1">
+                      {item.paid ? "Pago" : "Pendente"}
+                    </Badge>
+                  </div>
+                  {isEditorMode && (
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(item.id)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive"
+                        onClick={() => setDeleteId(item.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </CardContent>
       </Card>
 

@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useState, useEffect } from "react"
-import { useDebts } from "@/lib/hooks/use-debts"
+import { useDebts } from "@/lib/hooks/use-debts-firebase"
 import type { Debt } from "@/lib/types"
 
 interface EditDebtDialogProps {

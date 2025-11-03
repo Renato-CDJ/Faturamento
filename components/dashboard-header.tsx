@@ -1,6 +1,6 @@
 "use client"
 
-import { Wallet, Plus, Settings, Eye, Edit, Calendar } from "lucide-react"
+import { Wallet, Plus, Settings, Eye, Edit, Calendar, FolderKanban } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -10,6 +10,7 @@ import { AddIncomeDialog } from "./add-income-dialog"
 import { SettingsDialog } from "./settings-dialog"
 import { AddDebtDialog } from "./add-debt-dialog"
 import { AddInstallmentDialog } from "./add-installment-dialog"
+import { ManageCategoriesDialog } from "./manage-categories-dialog"
 import { useViewMode } from "@/lib/view-mode-context"
 
 interface DashboardHeaderProps {
@@ -23,6 +24,7 @@ export function DashboardHeader({ selectedMonth, onMonthChange }: DashboardHeade
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false)
   const [debtDialogOpen, setDebtDialogOpen] = useState(false)
   const [installmentDialogOpen, setInstallmentDialogOpen] = useState(false)
+  const [categoriesDialogOpen, setCategoriesDialogOpen] = useState(false)
 
   const { mode, setMode, isEditorMode } = useViewMode()
 
@@ -89,6 +91,11 @@ export function DashboardHeader({ selectedMonth, onMonthChange }: DashboardHeade
                 )}
               </Button>
 
+              <Button variant="outline" size="sm" onClick={() => setCategoriesDialogOpen(true)} className="gap-2">
+                <FolderKanban className="h-4 w-4" />
+                Categorias
+              </Button>
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button className="gap-2">
@@ -117,6 +124,7 @@ export function DashboardHeader({ selectedMonth, onMonthChange }: DashboardHeade
       <SettingsDialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen} />
       <AddDebtDialog open={debtDialogOpen} onOpenChange={setDebtDialogOpen} />
       <AddInstallmentDialog open={installmentDialogOpen} onOpenChange={setInstallmentDialogOpen} />
+      <ManageCategoriesDialog open={categoriesDialogOpen} onOpenChange={setCategoriesDialogOpen} />
     </>
   )
 }

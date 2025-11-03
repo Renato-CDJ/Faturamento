@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { useViewMode } from "@/lib/view-mode-context"
-import { useDebts } from "@/lib/hooks/use-debts"
+import { useDebts } from "@/lib/hooks/use-debts-firebase"
 import { EditDebtDialog } from "@/components/edit-debt-dialog"
 import type { Debt } from "@/lib/types"
 

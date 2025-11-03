@@ -17,7 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState } from "react"
 import { X, Plus } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
-import { useExpenses } from "@/lib/hooks/use-expenses"
+import { useExpenses } from "@/lib/hooks/use-expenses-firebase"
+import { useCategories } from "@/lib/hooks/use-categories-firebase"
 
 interface AddExpenseDialogProps {
   open: boolean
@@ -32,6 +33,7 @@ interface Person {
 
 export function AddExpenseDialog({ open, onOpenChange }: AddExpenseDialogProps) {
   const { addExpense } = useExpenses()
+  const { categories, loading: categoriesLoading } = useCategories("expense")
   const [description, setDescription] = useState("")
   const [amount, setAmount] = useState("")
   const [category, setCategory] = useState("")
@@ -72,15 +74,23 @@ export function AddExpenseDialog({ open, onOpenChange }: AddExpenseDialogProps) 
         totalShares: isSplit ? totalShares : undefined,
       })
 
-      await addExpense({
+      const expenseData = {
         description,
         amount: Number.parseFloat(amount),
         category,
         date: new Date().toISOString().split("T")[0],
         is_split: isSplit,
         split_parts: isSplit ? totalShares : 1,
-        participants: isSplit ? people : undefined,
-      })
+      }
+
+      const participantsData = isSplit
+        ? people.map((p) => ({
+            name: p.name,
+            parts: p.share,
+          }))
+        : undefined
+
+      await addExpense(expenseData, participantsData)
 
       // Reset form
       setDescription("")
@@ -130,17 +140,16 @@ export function AddExpenseDialog({ open, onOpenChange }: AddExpenseDialogProps) 
             </div>
             <div className="grid gap-2">
               <Label htmlFor="category">Categoria</Label>
-              <Select value={category} onValueChange={setCategory} required>
+              <Select value={category} onValueChange={setCategory} required disabled={categoriesLoading}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma categoria" />
+                  <SelectValue placeholder={categoriesLoading ? "Carregando..." : "Selecione uma categoria"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="alimentacao">Alimentação</SelectItem>
-                  <SelectItem value="transporte">Transporte</SelectItem>
-                  <SelectItem value="moradia">Moradia</SelectItem>
-                  <SelectItem value="saude">Saúde</SelectItem>
-                  <SelectItem value="lazer">Lazer</SelectItem>
-                  <SelectItem value="outros">Outros</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.name}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

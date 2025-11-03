@@ -12,10 +12,12 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Plus, X } from "lucide-react"
 import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { useInstallments } from "@/lib/hooks/use-installments-firebase"
+import { useCategories } from "@/lib/hooks/use-categories-firebase"
 
 interface AddInstallmentDialogProps {
   open: boolean
@@ -30,10 +32,13 @@ interface Participant {
 }
 
 export function AddInstallmentDialog({ open, onOpenChange, onInstallmentAdded }: AddInstallmentDialogProps) {
+  const { addInstallment } = useInstallments()
+  const { categories, loading: categoriesLoading } = useCategories("installment")
   const [name, setName] = useState("")
   const [installmentCount, setInstallmentCount] = useState("")
   const [installmentValue, setInstallmentValue] = useState("")
   const [firstDueDate, setFirstDueDate] = useState("")
+  const [category, setCategory] = useState("")
   const [isSplit, setIsSplit] = useState(false)
   const [participants, setParticipants] = useState<Participant[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -66,63 +71,19 @@ export function AddInstallmentDialog({ open, onOpenChange, onInstallmentAdded }:
     setIsSubmitting(true)
 
     try {
-      const supabase = createClient()
       const count = Number.parseInt(installmentCount)
       const value = Number.parseFloat(installmentValue)
       const totalAmount = count * value
 
-      const { data: installmentData, error: installmentError } = await supabase
-        .from("installments")
-        .insert({
-          name,
-          total_amount: totalAmount,
-          installment_count: count,
-          paid_installments: 0,
-          installment_value: value,
-          is_split: isSplit,
-          split_parts: isSplit ? participants.length : 1,
-        })
-        .select()
-        .single()
-
-      if (installmentError) throw installmentError
-
-      const payments = []
-      const baseDate = new Date(firstDueDate)
-      for (let i = 0; i < count; i++) {
-        const dueDate = new Date(baseDate)
-        dueDate.setMonth(dueDate.getMonth() + i)
-        payments.push({
-          installment_id: installmentData.id,
-          payment_number: i + 1,
-          due_date: dueDate.toISOString().split("T")[0],
-          is_paid: false,
-        })
-      }
-
-      const { error: paymentsError } = await supabase.from("installment_payments").insert(payments)
-
-      if (paymentsError) throw paymentsError
-
-      if (isSplit && participants.length > 0) {
-        const splitData = calculateSplit()
-        const { error: participantsError } = await supabase.from("installment_participants").insert(
-          splitData.map((p) => ({
-            installment_id: installmentData.id,
-            name: p.name,
-            parts: p.parts,
-            amount_owed: p.amount_owed,
-          })),
-        )
-
-        if (participantsError) throw participantsError
-      }
-
-      await supabase.from("transactions").insert({
-        description: `Parcelamento: ${name}`,
-        amount: totalAmount,
-        type: "installment",
-        date: firstDueDate,
+      await addInstallment({
+        name,
+        total_amount: totalAmount,
+        total_installments: count,
+        current_installment: 1,
+        installment_value: value,
+        due_date: firstDueDate,
+        category: category || "Outros",
+        paid: false,
       })
 
       // Reset form
@@ -130,6 +91,7 @@ export function AddInstallmentDialog({ open, onOpenChange, onInstallmentAdded }:
       setInstallmentCount("")
       setInstallmentValue("")
       setFirstDueDate("")
+      setCategory("")
       setIsSplit(false)
       setParticipants([])
       onOpenChange(false)
@@ -197,7 +159,21 @@ export function AddInstallmentDialog({ open, onOpenChange, onInstallmentAdded }:
                 required
               />
             </div>
-
+            <div className="grid gap-2">
+              <Label htmlFor="installment-category">Categoria</Label>
+              <Select value={category} onValueChange={setCategory} required disabled={categoriesLoading}>
+                <SelectTrigger id="installment-category">
+                  <SelectValue placeholder={categoriesLoading ? "Carregando..." : "Selecione uma categoria"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.name}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="split-installment"
@@ -208,7 +184,6 @@ export function AddInstallmentDialog({ open, onOpenChange, onInstallmentAdded }:
                 Dividir parcelamento com outras pessoas
               </Label>
             </div>
-
             {isSplit && (
               <div className="space-y-3 rounded-lg border border-border p-4">
                 <div className="flex items-center justify-between">
@@ -225,7 +200,6 @@ export function AddInstallmentDialog({ open, onOpenChange, onInstallmentAdded }:
                     Adicionar
                   </Button>
                 </div>
-
                 {participants.map((participant) => (
                   <div key={participant.id} className="flex gap-2">
                     <Input
@@ -256,7 +230,6 @@ export function AddInstallmentDialog({ open, onOpenChange, onInstallmentAdded }:
                     </Button>
                   </div>
                 ))}
-
                 {participants.length > 0 && installmentValue && (
                   <div className="mt-3 space-y-1 rounded-md bg-muted p-3 text-sm">
                     <p className="font-medium">Divisão por parcela:</p>
@@ -269,7 +242,6 @@ export function AddInstallmentDialog({ open, onOpenChange, onInstallmentAdded }:
                 )}
               </div>
             )}
-
             {installmentCount && installmentValue && (
               <div className="rounded-md bg-muted p-3 text-sm">
                 <p className="font-medium">

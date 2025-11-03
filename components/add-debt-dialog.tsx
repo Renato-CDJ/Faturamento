@@ -12,10 +12,12 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Plus, X } from "lucide-react"
 import { useState } from "react"
-import { useDebts } from "@/lib/hooks/use-debts"
+import { useDebts } from "@/lib/hooks/use-debts-firebase"
+import { useCategories } from "@/lib/hooks/use-categories-firebase"
 
 interface AddDebtDialogProps {
   open: boolean
@@ -30,10 +32,12 @@ interface Participant {
 
 export function AddDebtDialog({ open, onOpenChange }: AddDebtDialogProps) {
   const { addDebt } = useDebts()
+  const { categories, loading: categoriesLoading } = useCategories("debt")
   const [name, setName] = useState("")
   const [total, setTotal] = useState("")
   const [paid, setPaid] = useState("")
   const [dueDate, setDueDate] = useState("")
+  const [category, setCategory] = useState("")
   const [isSplit, setIsSplit] = useState(false)
   const [participants, setParticipants] = useState<Participant[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -71,6 +75,7 @@ export function AddDebtDialog({ open, onOpenChange }: AddDebtDialogProps) {
         total_amount: Number.parseFloat(total),
         paid_amount: Number.parseFloat(paid) || 0,
         due_date: dueDate || null,
+        category,
         is_split: isSplit,
         split_parts: isSplit ? participants.reduce((sum, p) => sum + p.parts, 0) : 1,
         is_paid: false,
@@ -82,6 +87,7 @@ export function AddDebtDialog({ open, onOpenChange }: AddDebtDialogProps) {
       setTotal("")
       setPaid("")
       setDueDate("")
+      setCategory("")
       setIsSplit(false)
       setParticipants([])
       onOpenChange(false)
@@ -139,7 +145,21 @@ export function AddDebtDialog({ open, onOpenChange }: AddDebtDialogProps) {
               <Label htmlFor="debt-duedate">Data de Vencimento</Label>
               <Input id="debt-duedate" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
             </div>
-
+            <div className="grid gap-2">
+              <Label htmlFor="debt-category">Categoria</Label>
+              <Select value={category} onValueChange={setCategory} required disabled={categoriesLoading}>
+                <SelectTrigger id="debt-category">
+                  <SelectValue placeholder={categoriesLoading ? "Carregando..." : "Selecione uma categoria"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.name}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="split-debt"
@@ -150,7 +170,6 @@ export function AddDebtDialog({ open, onOpenChange }: AddDebtDialogProps) {
                 Dividir dívida com outras pessoas (até 5x)
               </Label>
             </div>
-
             {isSplit && (
               <div className="space-y-3 rounded-lg border border-border p-4">
                 <div className="flex items-center justify-between">
@@ -167,7 +186,6 @@ export function AddDebtDialog({ open, onOpenChange }: AddDebtDialogProps) {
                     Adicionar
                   </Button>
                 </div>
-
                 {participants.map((participant) => (
                   <div key={participant.id} className="flex gap-2">
                     <Input
@@ -198,7 +216,6 @@ export function AddDebtDialog({ open, onOpenChange }: AddDebtDialogProps) {
                     </Button>
                   </div>
                 ))}
-
                 {participants.length > 0 && total && (
                   <div className="mt-3 space-y-1 rounded-md bg-muted p-3 text-sm">
                     <p className="font-medium">Divisão:</p>
