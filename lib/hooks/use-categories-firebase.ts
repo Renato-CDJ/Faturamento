@@ -18,6 +18,7 @@ import type { Category } from "@/lib/types"
 export function useCategories() {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     console.log("[v0] Setting up categories listener")
@@ -32,12 +33,13 @@ export function useCategories() {
           created_at: doc.data().created_at?.toDate?.()?.toISOString() || new Date().toISOString(),
         })) as Category[]
 
-        console.log("[v0] Categories updated:", categoriesData.length)
         setCategories(categoriesData)
         setLoading(false)
+        setError(null)
       },
       (error) => {
         console.error("[v0] Error fetching categories:", error.message)
+        setError(error.message)
         setLoading(false)
       },
     )
@@ -45,16 +47,15 @@ export function useCategories() {
     return () => unsubscribe()
   }, [])
 
-  const addCategory = async (name: string, icon?: string) => {
+  const addCategory = async (name: string, type: "expense" | "debt" | "all" = "expense", color = "#6b7280") => {
     try {
-      console.log("[v0] Adding category:", name)
       await addDoc(collection(db, "categories"), {
         name,
-        icon: icon || "📁",
+        type,
+        color,
         created_at: Timestamp.now(),
       })
-      console.log("[v0] Category added successfully")
-    } catch (error) {
+    } catch (error: any) {
       console.error("[v0] Error adding category:", error)
       throw error
     }
@@ -62,11 +63,9 @@ export function useCategories() {
 
   const updateCategory = async (id: string, updates: Partial<Omit<Category, "id" | "created_at">>) => {
     try {
-      console.log("[v0] Updating category:", id)
       const categoryRef = doc(db, "categories", id)
       await updateDoc(categoryRef, updates)
-      console.log("[v0] Category updated successfully")
-    } catch (error) {
+    } catch (error: any) {
       console.error("[v0] Error updating category:", error)
       throw error
     }
@@ -74,11 +73,9 @@ export function useCategories() {
 
   const deleteCategory = async (id: string) => {
     try {
-      console.log("[v0] Deleting category:", id)
       const categoryRef = doc(db, "categories", id)
       await deleteDoc(categoryRef)
-      console.log("[v0] Category deleted successfully")
-    } catch (error) {
+    } catch (error: any) {
       console.error("[v0] Error deleting category:", error)
       throw error
     }
@@ -87,6 +84,7 @@ export function useCategories() {
   return {
     categories,
     loading,
+    error,
     addCategory,
     updateCategory,
     deleteCategory,

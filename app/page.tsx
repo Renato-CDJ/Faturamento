@@ -7,10 +7,22 @@ import { DebtsList } from "@/components/debts-list"
 import { InstallmentsList } from "@/components/installments-list"
 import { FinancialInsights } from "@/components/financial-insights"
 import { RecentTransactions } from "@/components/recent-transactions"
+import { FirebaseSetupModal } from "@/components/firebase-setup-modal"
 import { ViewModeProvider } from "@/lib/view-mode-context"
 import { ProtectedRoute } from "@/components/protected-route"
+import { useCategories } from "@/lib/hooks/use-categories-firebase"
+import { useState, useEffect } from "react"
 
 export default function DashboardPage() {
+  const { error } = useCategories()
+  const [showSetupModal, setShowSetupModal] = useState(false)
+
+  useEffect(() => {
+    if (error?.includes("Missing or insufficient permissions")) {
+      setShowSetupModal(true)
+    }
+  }, [error])
+
   return (
     <ProtectedRoute>
       <ViewModeProvider>
@@ -32,6 +44,8 @@ export default function DashboardPage() {
 
             <RecentTransactions />
           </main>
+
+          <FirebaseSetupModal open={showSetupModal} onOpenChange={setShowSetupModal} />
         </div>
       </ViewModeProvider>
     </ProtectedRoute>

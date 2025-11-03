@@ -5,8 +5,12 @@ import { Analytics } from "@vercel/analytics/next"
 import { AuthProvider } from "@/lib/contexts/auth-context"
 import "./globals.css"
 
-const _geist = Geist({ subsets: ["latin"] })
-const _geistMono = Geist_Mono({ subsets: ["latin"] })
+const geist = Geist({
+  subsets: ["latin"],
+})
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+})
 
 export const metadata: Metadata = {
   title: "Dashboard Financeiro",
@@ -21,7 +25,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body className={`font-sans antialiased`}>
+      <body className={`${geist.className} antialiased`}>
         <AuthProvider>{children}</AuthProvider>
         <Analytics />
       </body>
