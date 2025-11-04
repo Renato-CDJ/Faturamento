@@ -17,11 +17,15 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useViewMode } from "@/lib/view-mode-context"
 import { useInstallments } from "@/lib/hooks/use-installments-firebase"
+import { EditInstallmentDialog } from "@/components/edit-installment-dialog"
+import type { Installment } from "@/lib/types"
 
 export function InstallmentsList() {
   const { isEditorMode } = useViewMode()
   const { installments, loading, deleteInstallment, updateInstallment } = useInstallments()
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [editingInstallment, setEditingInstallment] = useState<Installment | null>(null)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
 
   const handleDelete = async () => {
     if (deleteId !== null) {
@@ -30,8 +34,9 @@ export function InstallmentsList() {
     }
   }
 
-  const handleEdit = (id: string) => {
-    console.log("[v0] Edit installment:", id)
+  const handleEdit = (installment: Installment) => {
+    setEditingInstallment(installment)
+    setEditDialogOpen(true)
   }
 
   const handleTogglePaid = async (id: string, currentPaid: boolean) => {
@@ -100,7 +105,7 @@ export function InstallmentsList() {
                   </div>
                   {isEditorMode && (
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(item.id)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(item)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
@@ -136,6 +141,16 @@ export function InstallmentsList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <EditInstallmentDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        installment={editingInstallment}
+        onInstallmentUpdated={() => {
+          setEditingInstallment(null)
+          setEditDialogOpen(false)
+        }}
+      />
     </>
   )
 }

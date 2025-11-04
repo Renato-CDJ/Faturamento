@@ -9,21 +9,29 @@ import {
   doc,
   getDocs,
   query,
-  orderBy,
+  where,
   Timestamp,
   type DocumentData,
 } from "firebase/firestore"
 import { db } from "@/lib/firebase/client"
+import { useAuth } from "@/lib/contexts/auth-context"
 import type { Debt, DebtParticipant } from "@/lib/types"
 
 export function useDebtsFirebase() {
   const [debts, setDebts] = useState<Debt[]>([])
   const [loading, setLoading] = useState(true)
+  const { user } = useAuth()
 
   const fetchDebts = async () => {
     try {
+      if (!user) {
+        setDebts([])
+        setLoading(false)
+        return
+      }
+
       const debtsRef = collection(db, "debts")
-      const q = query(debtsRef, orderBy("created_at", "desc"))
+      const q = query(debtsRef, where("user_id", "==", user.uid))
       const querySnapshot = await getDocs(q)
 
       const debtsData = querySnapshot.docs.map((doc) => {
@@ -37,6 +45,8 @@ export function useDebtsFirebase() {
         } as Debt
       })
 
+      debtsData.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
       setDebts(debtsData)
     } catch (error) {
       console.error("[v0] Error fetching debts from Firebase:", error)
@@ -46,17 +56,22 @@ export function useDebtsFirebase() {
   }
 
   useEffect(() => {
-    fetchDebts()
-  }, [])
+    if (user) {
+      fetchDebts()
+    }
+  }, [user])
 
   const addDebt = async (
     debt: Omit<Debt, "id" | "created_at" | "updated_at">,
     participants?: { name: string; parts: number }[],
   ) => {
     try {
+      if (!user) throw new Error("User not authenticated")
+
       const debtsRef = collection(db, "debts")
       const debtData = {
         ...debt,
+        user_id: user.uid,
         created_at: Timestamp.now(),
         updated_at: Timestamp.now(),
         due_date: debt.due_date ? Timestamp.fromDate(new Date(debt.due_date)) : null,
@@ -64,7 +79,6 @@ export function useDebtsFirebase() {
 
       const docRef = await addDoc(debtsRef, debtData)
 
-      // If debt is split, add participants
       if (debt.is_split && participants && participants.length > 0) {
         const totalParts = participants.reduce((sum, p) => sum + p.parts, 0)
         const participantsRef = collection(db, "debt_participants")
@@ -115,7 +129,6 @@ export function useDebtsFirebase() {
       const debtRef = doc(db, "debts", id)
       await deleteDoc(debtRef)
 
-      // Delete associated participants
       const participantsRef = collection(db, "debt_participants")
       const q = query(participantsRef)
       const querySnapshot = await getDocs(q)

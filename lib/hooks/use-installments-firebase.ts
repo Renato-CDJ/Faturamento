@@ -9,21 +9,29 @@ import {
   doc,
   getDocs,
   query,
-  orderBy,
+  where,
   Timestamp,
   type DocumentData,
 } from "firebase/firestore"
 import { db } from "@/lib/firebase/client"
+import { useAuth } from "@/lib/contexts/auth-context"
 import type { Installment } from "@/lib/types"
 
 export function useInstallmentsFirebase() {
   const [installments, setInstallments] = useState<Installment[]>([])
   const [loading, setLoading] = useState(true)
+  const { user } = useAuth()
 
   const fetchInstallments = async () => {
     try {
+      if (!user) {
+        setInstallments([])
+        setLoading(false)
+        return
+      }
+
       const installmentsRef = collection(db, "installments")
-      const q = query(installmentsRef, orderBy("created_at", "desc"))
+      const q = query(installmentsRef, where("user_id", "==", user.uid))
       const querySnapshot = await getDocs(q)
 
       const installmentsData = querySnapshot.docs.map((doc) => {
@@ -36,6 +44,8 @@ export function useInstallmentsFirebase() {
         } as Installment
       })
 
+      installmentsData.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
       setInstallments(installmentsData)
     } catch (error) {
       console.error("[v0] Error fetching installments from Firebase:", error)
@@ -45,14 +55,19 @@ export function useInstallmentsFirebase() {
   }
 
   useEffect(() => {
-    fetchInstallments()
-  }, [])
+    if (user) {
+      fetchInstallments()
+    }
+  }, [user])
 
   const addInstallment = async (installment: Omit<Installment, "id" | "created_at" | "updated_at">) => {
     try {
+      if (!user) throw new Error("User not authenticated")
+
       const installmentsRef = collection(db, "installments")
       const installmentData = {
         ...installment,
+        user_id: user.uid,
         due_date: Timestamp.fromDate(new Date(installment.due_date)),
         created_at: Timestamp.now(),
         updated_at: Timestamp.now(),

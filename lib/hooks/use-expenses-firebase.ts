@@ -9,21 +9,29 @@ import {
   doc,
   getDocs,
   query,
-  orderBy,
+  where,
   Timestamp,
   type DocumentData,
 } from "firebase/firestore"
 import { db } from "@/lib/firebase/client"
+import { useAuth } from "@/lib/contexts/auth-context"
 import type { Expense, ExpenseParticipant } from "@/lib/types"
 
 export function useExpensesFirebase() {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
+  const { user } = useAuth()
 
   const fetchExpenses = async () => {
     try {
+      if (!user) {
+        setExpenses([])
+        setLoading(false)
+        return
+      }
+
       const expensesRef = collection(db, "expenses")
-      const q = query(expensesRef, orderBy("date", "desc"))
+      const q = query(expensesRef, where("user_id", "==", user.uid))
       const querySnapshot = await getDocs(q)
 
       const expensesData = querySnapshot.docs.map((doc) => {
@@ -36,6 +44,8 @@ export function useExpensesFirebase() {
         } as Expense
       })
 
+      expensesData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
       setExpenses(expensesData)
     } catch (error) {
       console.error("[v0] Error fetching expenses from Firebase:", error)
@@ -45,17 +55,22 @@ export function useExpensesFirebase() {
   }
 
   useEffect(() => {
-    fetchExpenses()
-  }, [])
+    if (user) {
+      fetchExpenses()
+    }
+  }, [user])
 
   const addExpense = async (
     expense: Omit<Expense, "id" | "created_at" | "updated_at">,
     participants?: { name: string; parts: number }[],
   ) => {
     try {
+      if (!user) throw new Error("User not authenticated")
+
       const expensesRef = collection(db, "expenses")
       const expenseData = {
         ...expense,
+        user_id: user.uid,
         date: Timestamp.fromDate(new Date(expense.date)),
         created_at: Timestamp.now(),
         updated_at: Timestamp.now(),
@@ -117,10 +132,8 @@ export function useExpensesFirebase() {
       const expenseRef = doc(db, "expenses", id)
       await deleteDoc(expenseRef)
 
-      // Delete associated participants
       const participantsRef = collection(db, "expense_participants")
-      const q = query(participantsRef)
-      const querySnapshot = await getDocs(q)
+      const querySnapshot = await getDocs(participantsRef)
 
       const deletePromises = querySnapshot.docs
         .filter((doc) => doc.data().expense_id === id)
@@ -131,7 +144,7 @@ export function useExpensesFirebase() {
       await fetchExpenses()
       return true
     } catch (error) {
-      console.error("[v0] Error deleting expense from Firebase:", error)
+      console.error("[v0] Error deleting expense in Firebase:", error)
       return false
     }
   }

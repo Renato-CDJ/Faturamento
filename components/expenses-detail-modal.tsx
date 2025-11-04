@@ -7,6 +7,8 @@ import { Progress } from "@/components/ui/progress"
 import type { Expense } from "@/lib/types"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
+import { ChevronDown, ChevronUp } from "lucide-react"
+import { useState } from "react"
 
 interface ExpensesDetailModalProps {
   open: boolean
@@ -16,6 +18,8 @@ interface ExpensesDetailModalProps {
 }
 
 export function ExpensesDetailModal({ open, onOpenChange, expenses, month }: ExpensesDetailModalProps) {
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
+
   const monthExpenses = expenses.filter((expense) => {
     const expenseMonth = expense.date.substring(0, 7)
     return expenseMonth === month
@@ -33,6 +37,10 @@ export function ExpensesDetailModal({ open, onOpenChange, expenses, month }: Exp
     },
     {} as Record<string, Expense[]>,
   )
+
+  const toggleCategory = (category: string) => {
+    setExpandedCategory(expandedCategory === category ? null : category)
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -66,53 +74,71 @@ export function ExpensesDetailModal({ open, onOpenChange, expenses, month }: Exp
               <p className="text-sm mt-2">Adicione despesas para começar a acompanhar seus gastos</p>
             </div>
           ) : (
-            <div className="space-y-6 pb-4">
+            <div className="space-y-3 pb-4">
               {Object.entries(groupedByCategory).map(([category, categoryExpenses]) => {
                 const categoryTotal = categoryExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0)
                 const categoryPercentage = (categoryTotal / total) * 100
+                const isExpanded = expandedCategory === category
 
                 return (
-                  <div key={category} className="space-y-3">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
+                  <div key={category} className="space-y-0 rounded-lg border border-border bg-card overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => toggleCategory(category)}
+                      className="w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors flex items-center justify-between"
+                    >
+                      <div className="flex-1">
                         <h3 className="text-lg font-semibold text-foreground">{category}</h3>
+                      </div>
+                      <div className="flex items-center gap-4">
                         <div className="text-right">
-                          <span className="text-lg font-bold">
+                          <span className="text-lg font-bold text-foreground">
                             {categoryTotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                           </span>
                           <p className="text-xs text-muted-foreground">{categoryPercentage.toFixed(1)}% do total</p>
                         </div>
+                        {isExpanded ? (
+                          <ChevronUp className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                        ) : (
+                          <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                        )}
                       </div>
+                    </button>
+
+                    {/* Progress bar */}
+                    <div className="px-4 pb-3 pt-0">
                       <Progress value={categoryPercentage} className="h-2" />
                     </div>
 
-                    <div className="grid gap-3">
-                      {categoryExpenses.map((expense) => (
-                        <div
-                          key={expense.id}
-                          className="flex items-center justify-between rounded-lg border bg-card p-4 hover:bg-muted/50 transition-colors"
-                        >
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-foreground truncate">{expense.description}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <p className="text-sm text-muted-foreground">
-                                {format(new Date(expense.date), "dd/MM/yyyy")}
-                              </p>
-                              {expense.is_split && (
-                                <Badge variant="secondary" className="text-xs">
-                                  Dividido em {expense.split_parts}x
-                                </Badge>
-                              )}
+                    {isExpanded && (
+                      <div className="border-t border-border px-4 py-3 space-y-3 bg-muted/30">
+                        {categoryExpenses.map((expense) => (
+                          <div
+                            key={expense.id}
+                            className="flex items-center justify-between rounded-lg bg-card p-3 border border-border hover:border-accent transition-colors"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-foreground truncate">{expense.description}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <p className="text-sm text-muted-foreground">
+                                  {format(new Date(expense.date), "dd/MM/yyyy")}
+                                </p>
+                                {expense.is_split && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    Dividido em {expense.split_parts}x
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-right ml-4">
+                              <span className="text-lg font-semibold text-foreground whitespace-nowrap">
+                                {Number(expense.amount).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                              </span>
                             </div>
                           </div>
-                          <div className="text-right ml-4">
-                            <span className="text-lg font-semibold text-foreground whitespace-nowrap">
-                              {Number(expense.amount).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )
               })}
