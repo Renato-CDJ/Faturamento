@@ -12,7 +12,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Plus, Trash2 } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useIncome } from "@/lib/hooks/use-income-firebase"
 
 interface AddIncomeDialogProps {
   open: boolean
@@ -26,7 +27,26 @@ interface Salary {
 }
 
 export function SettingsDialog({ open, onOpenChange }: AddIncomeDialogProps) {
-  const [salaries, setSalaries] = useState<Salary[]>([{ id: "1", description: "Salário Principal", amount: "5000" }])
+  const { incomes, addIncome, loading } = useIncome()
+  const [salaries, setSalaries] = useState<Salary[]>([])
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (open && !loading) {
+      const recurringIncomes = incomes.filter((income) => income.is_recurring)
+      if (recurringIncomes.length > 0) {
+        setSalaries(
+          recurringIncomes.map((income) => ({
+            id: income.id,
+            description: income.source,
+            amount: income.amount.toString(),
+          })),
+        )
+      } else {
+        setSalaries([{ id: "1", description: "", amount: "" }])
+      }
+    }
+  }, [open, incomes, loading])
 
   const addSalary = () => {
     const newSalary: Salary = {
@@ -45,9 +65,27 @@ export function SettingsDialog({ open, onOpenChange }: AddIncomeDialogProps) {
     setSalaries(salaries.map((s) => (s.id === id ? { ...s, [field]: value } : s)))
   }
 
-  const handleSave = () => {
-    console.log("[v0] Saving salaries:", salaries)
-    onOpenChange(false)
+  const handleSave = async () => {
+    setIsSubmitting(true)
+    try {
+      // Save each salary as a recurring income
+      for (const salary of salaries) {
+        if (salary.description && salary.amount) {
+          await addIncome({
+            source: salary.description,
+            amount: Number.parseFloat(salary.amount),
+            date: new Date().toISOString().split("T")[0],
+            is_recurring: true,
+          })
+        }
+      }
+      onOpenChange(false)
+    } catch (error) {
+      console.error("[v0] Error saving salaries:", error)
+      alert("Erro ao salvar salários. Tente novamente.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -109,11 +147,11 @@ export function SettingsDialog({ open, onOpenChange }: AddIncomeDialogProps) {
           </div>
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Cancelar
           </Button>
-          <Button type="button" onClick={handleSave}>
-            Salvar
+          <Button type="button" onClick={handleSave} disabled={isSubmitting}>
+            {isSubmitting ? "Salvando..." : "Salvar"}
           </Button>
         </DialogFooter>
       </DialogContent>

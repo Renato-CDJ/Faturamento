@@ -90,7 +90,9 @@ export function AddExpenseDialog({ open, onOpenChange }: AddExpenseDialogProps) 
           }))
         : undefined
 
+      console.log("[v0] Calling addExpense with:", { expenseData, participantsData })
       await addExpense(expenseData, participantsData)
+      console.log("[v0] Expense added successfully")
 
       // Reset form
       setDescription("")

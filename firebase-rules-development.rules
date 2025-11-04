@@ -32,6 +32,10 @@ service cloud.firestore {
       allow read, write: if true;
     }
     
+    match /incomes/{incomeId} {
+      allow read, write: if true;
+    }
+    
     // Bloquear outras coleções
     match /{document=**} {
       allow read, write: if false;

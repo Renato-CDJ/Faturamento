@@ -14,7 +14,9 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useState } from "react"
+import { useIncome } from "@/lib/hooks/use-income-firebase"
 
 interface AddIncomeDialogProps {
   open: boolean
@@ -22,18 +24,37 @@ interface AddIncomeDialogProps {
 }
 
 export function AddIncomeDialog({ open, onOpenChange }: AddIncomeDialogProps) {
+  const { addIncome } = useIncome()
   const [description, setDescription] = useState("")
   const [amount, setAmount] = useState("")
   const [type, setType] = useState("")
+  const [isRecurring, setIsRecurring] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("[v0] Adding income:", { description, amount, type })
-    // Reset form
-    setDescription("")
-    setAmount("")
-    setType("")
-    onOpenChange(false)
+    setIsSubmitting(true)
+
+    try {
+      await addIncome({
+        source: `${type} - ${description}`,
+        amount: Number.parseFloat(amount),
+        date: new Date().toISOString().split("T")[0],
+        is_recurring: isRecurring,
+      })
+
+      // Reset form
+      setDescription("")
+      setAmount("")
+      setType("")
+      setIsRecurring(false)
+      onOpenChange(false)
+    } catch (error) {
+      console.error("[v0] Error adding income:", error)
+      alert("Erro ao adicionar receita. Tente novamente.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -46,10 +67,25 @@ export function AddIncomeDialog({ open, onOpenChange }: AddIncomeDialogProps) {
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
+              <Label htmlFor="income-type">Tipo</Label>
+              <Select value={type} onValueChange={setType} required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Salário">Salário</SelectItem>
+                  <SelectItem value="Freelance">Freelance</SelectItem>
+                  <SelectItem value="Investimento">Investimento</SelectItem>
+                  <SelectItem value="Bônus">Bônus</SelectItem>
+                  <SelectItem value="Outros">Outros</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
               <Label htmlFor="income-description">Descrição</Label>
               <Input
                 id="income-description"
-                placeholder="Ex: Salário, Freelance"
+                placeholder="Ex: Empresa XYZ, Projeto ABC"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 required
@@ -67,27 +103,24 @@ export function AddIncomeDialog({ open, onOpenChange }: AddIncomeDialogProps) {
                 required
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="income-type">Tipo</Label>
-              <Select value={type} onValueChange={setType} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="salario">Salário</SelectItem>
-                  <SelectItem value="freelance">Freelance</SelectItem>
-                  <SelectItem value="investimento">Investimento</SelectItem>
-                  <SelectItem value="bonus">Bônus</SelectItem>
-                  <SelectItem value="outros">Outros</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="recurring-income"
+                checked={isRecurring}
+                onCheckedChange={(checked) => setIsRecurring(checked as boolean)}
+              />
+              <Label htmlFor="recurring-income" className="text-sm font-normal cursor-pointer">
+                Receita recorrente (mensal)
+              </Label>
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
               Cancelar
             </Button>
-            <Button type="submit">Adicionar</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Adicionando..." : "Adicionar"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

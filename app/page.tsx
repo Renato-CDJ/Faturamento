@@ -36,7 +36,7 @@ export default function DashboardPage() {
           <DashboardHeader selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} />
 
           <main className="container mx-auto px-4 py-8 space-y-8">
-            <FinancialOverview />
+            <FinancialOverview selectedMonth={selectedMonth} />
 
             <div className="grid gap-6 lg:grid-cols-2">
               <ExpenseChart />
