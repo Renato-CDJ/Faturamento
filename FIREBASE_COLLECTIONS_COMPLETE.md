@@ -1,14 +1,14 @@
 # Estrutura Completa das Coleções Firebase
 
-Este documento detalha todas as coleções que você precisa criar no Firebase Firestore para o sistema de faturamento.
+Este documento detalha todas as coleções que você precisa criar no Firebase Firestore para o sistema de controle financeiro.
 
 ## 📋 Índice de Coleções
 
 1. [categories](#1-categories) - Categorias personalizadas
 2. [expenses](#2-expenses) - Despesas
-3. [expense_participants](#3-expense_participants) - Participantes de despesas divididas
-4. [debts](#4-debts) - Dívidas
-5. [installments](#5-installments) - Parcelamentos
+3. [debts](#4-debts) - Dívidas
+4. [debt_participants](#5-debt_participants) - Participantes de dívidas divididas
+5. [installments](#6-installments) - Parcelamentos
 
 ---
 
@@ -21,7 +21,8 @@ Armazena as categorias personalizadas criadas pelo usuário.
 \`\`\`typescript
 {
   name: string,           // Nome da categoria (ex: "Alimentação", "Transporte")
-  icon: string,           // Emoji ou ícone da categoria (ex: "🍔", "🚗")
+  type: string,           // Tipo: "all", "expense", "debt", ou "installment"
+  color: string,          // Cor em hexadecimal (ex: "#FF5733")
   created_at: Timestamp   // Data de criação
 }
 \`\`\`
@@ -31,23 +32,29 @@ Armazena as categorias personalizadas criadas pelo usuário.
 \`\`\`json
 {
   "name": "Alimentação",
-  "icon": "🍔",
+  "type": "expense",
+  "color": "#FF5733",
   "created_at": "2025-01-15T10:30:00Z"
 }
 \`\`\`
 
-### Regras de Segurança
+### Categorias Padrão para Criar
 
 \`\`\`javascript
-match /categories/{categoryId} {
-  allow read: if true;
-  allow write: if request.auth != null;
-}
+// Copie e cole no Firestore Console
+[
+  { "name": "Alimentação", "type": "expense", "color": "#FF5733" },
+  { "name": "Transporte", "type": "expense", "color": "#3498DB" },
+  { "name": "Moradia", "type": "expense", "color": "#2ECC71" },
+  { "name": "Saúde", "type": "expense", "color": "#E74C3C" },
+  { "name": "Lazer", "type": "expense", "color": "#9B59B6" },
+  { "name": "Educação", "type": "expense", "color": "#F39C12" },
+  { "name": "Vestuário", "type": "expense", "color": "#1ABC9C" },
+  { "name": "Eletrônicos", "type": "installment", "color": "#34495E" },
+  { "name": "Dívidas", "type": "debt", "color": "#E67E22" },
+  { "name": "Outros", "type": "all", "color": "#95A5A6" }
+]
 \`\`\`
-
-### Índices Necessários
-
-- `name` (Ascending) - Para ordenação alfabética
 
 ---
 
@@ -61,12 +68,12 @@ Armazena todas as despesas registradas.
 {
   description: string,    // Descrição da despesa
   amount: number,         // Valor total da despesa
-  category: string,       // Categoria da despesa
-  date: string,          // Data da despesa (ISO 8601)
-  is_split: boolean,     // Se a despesa é dividida
-  split_parts: number,   // Número de partes da divisão (se is_split = true)
-  created_at: Timestamp, // Data de criação do registro
-  updated_at: Timestamp  // Data da última atualização
+  category: string,       // Nome da categoria
+  date: Timestamp,        // Data da despesa
+  is_split: boolean,      // Se a despesa é dividida
+  split_parts: number,    // Número de partes da divisão
+  created_at: Timestamp,  // Data de criação do registro
+  updated_at: Timestamp   // Data da última atualização
 }
 \`\`\`
 
@@ -78,78 +85,16 @@ Armazena todas as despesas registradas.
   "amount": 150.00,
   "category": "Alimentação",
   "date": "2025-01-15T19:30:00Z",
-  "is_split": true,
-  "split_parts": 3,
+  "is_split": false,
+  "split_parts": 1,
   "created_at": "2025-01-15T20:00:00Z",
   "updated_at": "2025-01-15T20:00:00Z"
 }
 \`\`\`
 
-### Regras de Segurança
-
-\`\`\`javascript
-match /expenses/{expenseId} {
-  allow read: if true;
-  allow create: if request.auth != null 
-    && request.resource.data.keys().hasAll(['description', 'amount', 'category', 'date', 'is_split'])
-    && request.resource.data.amount is number
-    && request.resource.data.amount > 0;
-  allow update: if request.auth != null;
-  allow delete: if request.auth != null;
-}
-\`\`\`
-
-### Índices Necessários
-
-- `date` (Descending) - Para listar despesas mais recentes primeiro
-- `category` (Ascending) + `date` (Descending) - Para filtrar por categoria
-
 ---
 
-## 3. expense_participants
-
-Armazena os participantes de despesas divididas (subcoleção ou coleção separada).
-
-### Estrutura do Documento
-
-\`\`\`typescript
-{
-  expense_id: string,    // ID da despesa relacionada
-  name: string,          // Nome do participante
-  parts: number,         // Número de partes que o participante paga
-  amount: number,        // Valor que o participante deve pagar
-  created_at: Timestamp  // Data de criação
-}
-\`\`\`
-
-### Exemplo de Documento
-
-\`\`\`json
-{
-  "expense_id": "exp_123abc",
-  "name": "João Silva",
-  "parts": 1,
-  "amount": 50.00,
-  "created_at": "2025-01-15T20:00:00Z"
-}
-\`\`\`
-
-### Regras de Segurança
-
-\`\`\`javascript
-match /expense_participants/{participantId} {
-  allow read: if true;
-  allow write: if request.auth != null;
-}
-\`\`\`
-
-### Índices Necessários
-
-- `expense_id` (Ascending) - Para buscar participantes de uma despesa específica
-
----
-
-## 4. debts
+## 3. debts
 
 Armazena as dívidas registradas.
 
@@ -157,13 +102,16 @@ Armazena as dívidas registradas.
 
 \`\`\`typescript
 {
-  name: string,          // Nome/descrição da dívida
-  total_amount: number,  // Valor total da dívida
-  paid_amount: number,   // Valor já pago
-  due_date: string,      // Data de vencimento (ISO 8601) - opcional
-  category: string,      // Categoria da dívida
-  created_at: Timestamp, // Data de criação
-  updated_at: Timestamp  // Data da última atualização
+  name: string,           // Nome/descrição da dívida
+  total_amount: number,   // Valor total da dívida
+  paid_amount: number,    // Valor já pago
+  due_date: Timestamp | null, // Data de vencimento (opcional)
+  category: string,       // Nome da categoria
+  is_split: boolean,      // Se a dívida é dividida
+  split_parts: number,    // Número de partes da divisão
+  is_paid: boolean,       // Se a dívida está totalmente paga
+  created_at: Timestamp,  // Data de criação
+  updated_at: Timestamp   // Data da última atualização
 }
 \`\`\`
 
@@ -175,32 +123,46 @@ Armazena as dívidas registradas.
   "total_amount": 5000.00,
   "paid_amount": 1500.00,
   "due_date": "2025-02-15T00:00:00Z",
-  "category": "Financeiro",
+  "category": "Dívidas",
+  "is_split": false,
+  "split_parts": 1,
+  "is_paid": false,
   "created_at": "2025-01-10T10:00:00Z",
   "updated_at": "2025-01-15T14:30:00Z"
 }
 \`\`\`
 
-### Regras de Segurança
+---
 
-\`\`\`javascript
-match /debts/{debtId} {
-  allow read: if true;
-  allow create: if request.auth != null 
-    && request.resource.data.keys().hasAll(['name', 'total_amount', 'paid_amount'])
-    && request.resource.data.total_amount is number
-    && request.resource.data.paid_amount is number
-    && request.resource.data.paid_amount >= 0
-    && request.resource.data.paid_amount <= request.resource.data.total_amount;
-  allow update: if request.auth != null;
-  allow delete: if request.auth != null;
+## 4. debt_participants
+
+Armazena os participantes de dívidas divididas.
+
+### Estrutura do Documento
+
+\`\`\`typescript
+{
+  debt_id: string,        // ID da dívida relacionada
+  name: string,           // Nome do participante
+  parts: number,          // Número de partes que o participante paga
+  amount_owed: number,    // Valor que o participante deve pagar
+  is_paid: boolean,       // Se o participante já pagou
+  created_at: Timestamp   // Data de criação
 }
 \`\`\`
 
-### Índices Necessários
+### Exemplo de Documento
 
-- `due_date` (Ascending) - Para ordenar por vencimento
-- `created_at` (Descending) - Para listar dívidas mais recentes
+\`\`\`json
+{
+  "debt_id": "debt_123abc",
+  "name": "João Silva",
+  "parts": 1,
+  "amount_owed": 2500.00,
+  "is_paid": false,
+  "created_at": "2025-01-10T10:00:00Z"
+}
+\`\`\`
 
 ---
 
@@ -212,16 +174,18 @@ Armazena os parcelamentos registrados.
 
 \`\`\`typescript
 {
-  name: string,              // Nome do parcelamento
-  total_amount: number,      // Valor total parcelado
-  total_installments: number,// Número total de parcelas
+  name: string,               // Nome do parcelamento
+  total_amount: number,       // Valor total parcelado
+  total_installments: number, // Número total de parcelas
   current_installment: number,// Parcela atual
-  installment_value: number, // Valor de cada parcela
-  due_date: string,          // Data de vencimento da próxima parcela (ISO 8601)
-  category: string,          // Categoria do parcelamento
-  paid: boolean,             // Se a parcela atual está paga
-  created_at: Timestamp,     // Data de criação
-  updated_at: Timestamp      // Data da última atualização
+  installment_value: number,  // Valor de cada parcela
+  due_date: Timestamp,        // Data de vencimento da próxima parcela
+  category: string,           // Nome da categoria
+  paid: boolean,              // Se a parcela atual está paga
+  is_split: boolean,          // Se o parcelamento é dividido
+  split_parts: number,        // Número de partes da divisão
+  created_at: Timestamp,      // Data de criação
+  updated_at: Timestamp       // Data da última atualização
 }
 \`\`\`
 
@@ -237,30 +201,12 @@ Armazena os parcelamentos registrados.
   "due_date": "2025-02-05T00:00:00Z",
   "category": "Eletrônicos",
   "paid": false,
+  "is_split": false,
+  "split_parts": 1,
   "created_at": "2024-09-01T10:00:00Z",
   "updated_at": "2025-01-15T08:00:00Z"
 }
 \`\`\`
-
-### Regras de Segurança
-
-\`\`\`javascript
-match /installments/{installmentId} {
-  allow read: if true;
-  allow create: if request.auth != null 
-    && request.resource.data.keys().hasAll(['name', 'total_amount', 'total_installments', 'current_installment', 'installment_value', 'due_date', 'paid'])
-    && request.resource.data.total_installments is number
-    && request.resource.data.current_installment is number
-    && request.resource.data.current_installment <= request.resource.data.total_installments;
-  allow update: if request.auth != null;
-  allow delete: if request.auth != null;
-}
-\`\`\`
-
-### Índices Necessários
-
-- `due_date` (Ascending) - Para ordenar por vencimento
-- `paid` (Ascending) + `due_date` (Ascending) - Para filtrar parcelas pendentes
 
 ---
 
@@ -273,13 +219,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Categories
+    // Categories - Todos podem ler, apenas autenticados podem escrever
     match /categories/{categoryId} {
       allow read: if true;
       allow write: if request.auth != null;
     }
     
-    // Expenses
+    // Expenses - Todos podem ler, apenas autenticados podem escrever
     match /expenses/{expenseId} {
       allow read: if true;
       allow create: if request.auth != null 
@@ -290,13 +236,7 @@ service cloud.firestore {
       allow delete: if request.auth != null;
     }
     
-    // Expense Participants
-    match /expense_participants/{participantId} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-    
-    // Debts
+    // Debts - Todos podem ler, apenas autenticados podem escrever
     match /debts/{debtId} {
       allow read: if true;
       allow create: if request.auth != null 
@@ -309,7 +249,13 @@ service cloud.firestore {
       allow delete: if request.auth != null;
     }
     
-    // Installments
+    // Debt Participants - Todos podem ler, apenas autenticados podem escrever
+    match /debt_participants/{participantId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // Installments - Todos podem ler, apenas autenticados podem escrever
     match /installments/{installmentId} {
       allow read: if true;
       allow create: if request.auth != null 
@@ -326,47 +272,163 @@ service cloud.firestore {
 
 ---
 
-## 📝 Categorias Padrão Sugeridas
+## ✅ Passo a Passo para Configurar
 
-Adicione estas categorias iniciais manualmente no Firestore:
+### 1. Criar o Projeto Firebase
+
+1. Acesse [Firebase Console](https://console.firebase.google.com/)
+2. Clique em "Adicionar projeto"
+3. Dê um nome ao projeto
+4. Desabilite o Google Analytics (opcional)
+5. Clique em "Criar projeto"
+
+### 2. Ativar o Firestore
+
+1. No menu lateral, clique em "Firestore Database"
+2. Clique em "Criar banco de dados"
+3. Escolha "Iniciar no modo de teste" (você mudará as regras depois)
+4. Escolha a localização (recomendado: southamerica-east1 para Brasil)
+5. Clique em "Ativar"
+
+### 3. Criar as Coleções
+
+**IMPORTANTE:** No Firestore, as coleções são criadas automaticamente quando você adiciona o primeiro documento. Siga estes passos:
+
+#### 3.1. Criar a coleção "categories"
+
+1. Clique em "Iniciar coleção"
+2. ID da coleção: `categories`
+3. Clique em "Próximo"
+4. Adicione o primeiro documento:
+   - ID do documento: (deixe em branco para gerar automaticamente)
+   - Campos:
+     - `name` (string): "Alimentação"
+     - `type` (string): "expense"
+     - `color` (string): "#FF5733"
+     - `created_at` (timestamp): clique no relógio e selecione a data/hora atual
+5. Clique em "Salvar"
+6. Repita para adicionar as outras 9 categorias padrão listadas acima
+
+#### 3.2. Criar a coleção "expenses"
+
+1. Clique em "Iniciar coleção"
+2. ID da coleção: `expenses`
+3. Adicione um documento de exemplo:
+   - `description` (string): "Exemplo de despesa"
+   - `amount` (number): 100
+   - `category` (string): "Alimentação"
+   - `date` (timestamp): data atual
+   - `is_split` (boolean): false
+   - `split_parts` (number): 1
+   - `created_at` (timestamp): data atual
+   - `updated_at` (timestamp): data atual
+4. Clique em "Salvar"
+5. Você pode deletar este documento depois
+
+#### 3.3. Criar a coleção "debts"
+
+1. Clique em "Iniciar coleção"
+2. ID da coleção: `debts`
+3. Adicione um documento de exemplo:
+   - `name` (string): "Exemplo de dívida"
+   - `total_amount` (number): 1000
+   - `paid_amount` (number): 0
+   - `due_date` (timestamp): data futura
+   - `category` (string): "Dívidas"
+   - `is_split` (boolean): false
+   - `split_parts` (number): 1
+   - `is_paid` (boolean): false
+   - `created_at` (timestamp): data atual
+   - `updated_at` (timestamp): data atual
+4. Clique em "Salvar"
+
+#### 3.4. Criar a coleção "debt_participants"
+
+1. Clique em "Iniciar coleção"
+2. ID da coleção: `debt_participants`
+3. Adicione um documento de exemplo (você pode deletar depois):
+   - `debt_id` (string): "exemplo"
+   - `name` (string): "Participante Exemplo"
+   - `parts` (number): 1
+   - `amount_owed` (number): 500
+   - `is_paid` (boolean): false
+   - `created_at` (timestamp): data atual
+4. Clique em "Salvar"
+
+#### 3.5. Criar a coleção "installments"
+
+1. Clique em "Iniciar coleção"
+2. ID da coleção: `installments`
+3. Adicione um documento de exemplo:
+   - `name` (string): "Exemplo de parcelamento"
+   - `total_amount` (number): 1200
+   - `total_installments` (number): 12
+   - `current_installment` (number): 1
+   - `installment_value` (number): 100
+   - `due_date` (timestamp): data futura
+   - `category` (string): "Eletrônicos"
+   - `paid` (boolean): false
+   - `is_split` (boolean): false
+   - `split_parts` (number): 1
+   - `created_at` (timestamp): data atual
+   - `updated_at` (timestamp): data atual
+4. Clique em "Salvar"
+
+### 4. Configurar as Regras de Segurança
+
+1. No Firestore, clique na aba "Regras"
+2. Apague todo o conteúdo
+3. Copie e cole as regras de segurança listadas acima
+4. Clique em "Publicar"
+
+### 5. Obter as Credenciais do Firebase
+
+1. No Firebase Console, clique no ícone de engrenagem > "Configurações do projeto"
+2. Role até "Seus aplicativos"
+3. Clique no ícone da web `</>`
+4. Dê um nome ao app (ex: "Controle Financeiro")
+5. Copie as credenciais que aparecem:
 
 \`\`\`javascript
-// Categorias sugeridas
-const defaultCategories = [
-  { name: "Alimentação", icon: "🍔" },
-  { name: "Transporte", icon: "🚗" },
-  { name: "Moradia", icon: "🏠" },
-  { name: "Saúde", icon: "💊" },
-  { name: "Lazer", icon: "🎮" },
-  { name: "Educação", icon: "📚" },
-  { name: "Vestuário", icon: "👕" },
-  { name: "Eletrônicos", icon: "💻" },
-  { name: "Financeiro", icon: "💰" },
-  { name: "Outros", icon: "📁" }
-];
+const firebaseConfig = {
+  apiKey: "sua-api-key",
+  authDomain: "seu-projeto.firebaseapp.com",
+  projectId: "seu-projeto-id",
+  storageBucket: "seu-projeto.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abc123"
+};
 \`\`\`
 
----
-
-## ✅ Checklist de Configuração
-
-- [ ] Criar projeto no Firebase Console
-- [ ] Ativar Firestore Database
-- [ ] Criar as 5 coleções listadas acima
-- [ ] Configurar as regras de segurança
-- [ ] Criar os índices necessários (Firebase criará automaticamente quando necessário)
-- [ ] Adicionar categorias padrão
-- [ ] Testar operações CRUD em cada coleção
-- [ ] (Opcional) Configurar Firebase Authentication se necessário
+6. Cole essas credenciais nas variáveis de ambiente do seu projeto
 
 ---
 
-## 🚀 Próximos Passos
+## 🎯 Checklist Final
 
-1. Acesse o [Firebase Console](https://console.firebase.google.com/)
-2. Crie um novo projeto ou selecione o existente
-3. Vá em **Firestore Database** > **Create database**
-4. Escolha o modo de produção e a localização
-5. Copie as regras de segurança acima
-6. Adicione as categorias padrão manualmente ou via script
-7. Teste a aplicação!
+- [ ] Projeto Firebase criado
+- [ ] Firestore Database ativado
+- [ ] Coleção `categories` criada com 10 categorias padrão
+- [ ] Coleção `expenses` criada
+- [ ] Coleção `debts` criada
+- [ ] Coleção `debt_participants` criada
+- [ ] Coleção `installments` criada
+- [ ] Regras de segurança configuradas
+- [ ] Credenciais do Firebase copiadas
+- [ ] Variáveis de ambiente configuradas no projeto
+
+---
+
+## 🚀 Pronto!
+
+Agora seu Firebase está configurado e pronto para uso. A aplicação irá:
+
+- Criar automaticamente novos documentos quando você adicionar despesas, dívidas ou parcelamentos
+- Gerenciar as categorias através da interface
+- Sincronizar todos os dados em tempo real
+
+Se tiver algum problema, verifique:
+1. As credenciais do Firebase estão corretas nas variáveis de ambiente
+2. As regras de segurança foram publicadas
+3. Todas as 5 coleções foram criadas
+4. As categorias padrão foram adicionadas

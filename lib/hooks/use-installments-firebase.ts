@@ -31,7 +31,7 @@ export function useInstallmentsFirebase() {
         return {
           id: doc.id,
           ...data,
-          start_date: data.start_date?.toDate?.()?.toISOString() || new Date().toISOString(),
+          due_date: data.due_date?.toDate?.()?.toISOString() || new Date().toISOString(),
           created_at: data.created_at?.toDate?.()?.toISOString() || new Date().toISOString(),
         } as Installment
       })
@@ -48,13 +48,14 @@ export function useInstallmentsFirebase() {
     fetchInstallments()
   }, [])
 
-  const addInstallment = async (installment: Omit<Installment, "id" | "created_at">) => {
+  const addInstallment = async (installment: Omit<Installment, "id" | "created_at" | "updated_at">) => {
     try {
       const installmentsRef = collection(db, "installments")
       const installmentData = {
         ...installment,
-        start_date: Timestamp.fromDate(new Date(installment.start_date)),
+        due_date: Timestamp.fromDate(new Date(installment.due_date)),
         created_at: Timestamp.now(),
+        updated_at: Timestamp.now(),
       }
 
       const docRef = await addDoc(installmentsRef, installmentData)
@@ -69,10 +70,13 @@ export function useInstallmentsFirebase() {
   const updateInstallment = async (id: string, updates: Partial<Installment>) => {
     try {
       const installmentRef = doc(db, "installments", id)
-      const updateData: DocumentData = { ...updates }
+      const updateData: DocumentData = {
+        ...updates,
+        updated_at: Timestamp.now(),
+      }
 
-      if (updates.start_date) {
-        updateData.start_date = Timestamp.fromDate(new Date(updates.start_date))
+      if (updates.due_date) {
+        updateData.due_date = Timestamp.fromDate(new Date(updates.due_date))
       }
 
       await updateDoc(installmentRef, updateData)

@@ -15,13 +15,12 @@ import {
 import { db } from "@/lib/firebase/client"
 import type { Category } from "@/lib/types"
 
-export function useCategories() {
+export function useCategories(filterType?: "expense" | "debt" | "all" | "installment") {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    console.log("[v0] Setting up categories listener")
     const q = query(collection(db, "categories"), orderBy("name", "asc"))
 
     const unsubscribe = onSnapshot(
@@ -33,7 +32,11 @@ export function useCategories() {
           created_at: doc.data().created_at?.toDate?.()?.toISOString() || new Date().toISOString(),
         })) as Category[]
 
-        setCategories(categoriesData)
+        const filteredCategories = filterType
+          ? categoriesData.filter((cat) => cat.type === filterType || cat.type === "all")
+          : categoriesData
+
+        setCategories(filteredCategories)
         setLoading(false)
         setError(null)
       },
@@ -45,7 +48,7 @@ export function useCategories() {
     )
 
     return () => unsubscribe()
-  }, [])
+  }, [filterType])
 
   const addCategory = async (
     nameOrObject: string | { name: string; type: string; color: string },

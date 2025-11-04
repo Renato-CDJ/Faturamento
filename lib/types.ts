@@ -26,6 +26,7 @@ export interface Debt {
   total_amount: number
   paid_amount: number
   due_date: string | null
+  category: string
   is_split: boolean
   split_parts: number
   is_paid: boolean
@@ -47,9 +48,12 @@ export interface Installment {
   id: string
   name: string
   total_amount: number
-  installment_count: number
-  paid_installments: number
+  total_installments: number
+  current_installment: number
   installment_value: number
+  due_date: string
+  category: string
+  paid: boolean
   is_split: boolean
   split_parts: number
   participants?: InstallmentParticipant[]

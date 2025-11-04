@@ -84,6 +84,8 @@ export function AddInstallmentDialog({ open, onOpenChange, onInstallmentAdded }:
         due_date: firstDueDate,
         category: category || "Outros",
         paid: false,
+        is_split: isSplit,
+        split_parts: isSplit ? participants.reduce((sum, p) => sum + p.parts, 0) : 1,
       })
 
       // Reset form

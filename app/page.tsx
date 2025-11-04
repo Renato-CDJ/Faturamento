@@ -16,6 +16,12 @@ import { useState, useEffect } from "react"
 export default function DashboardPage() {
   const { error } = useCategories()
   const [showSetupModal, setShowSetupModal] = useState(false)
+  const [selectedMonth, setSelectedMonth] = useState("")
+
+  useEffect(() => {
+    const now = new Date()
+    setSelectedMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`)
+  }, [])
 
   useEffect(() => {
     if (error?.includes("Missing or insufficient permissions")) {
@@ -27,7 +33,7 @@ export default function DashboardPage() {
     <ProtectedRoute>
       <ViewModeProvider>
         <div className="min-h-screen bg-background">
-          <DashboardHeader />
+          <DashboardHeader selectedMonth={selectedMonth} onMonthChange={setSelectedMonth} />
 
           <main className="container mx-auto px-4 py-8 space-y-8">
             <FinancialOverview />
