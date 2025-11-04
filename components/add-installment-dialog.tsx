@@ -75,7 +75,7 @@ export function AddInstallmentDialog({ open, onOpenChange, onInstallmentAdded }:
       const value = Number.parseFloat(installmentValue)
       const totalAmount = count * value
 
-      await addInstallment({
+      const installmentData = {
         name,
         total_amount: totalAmount,
         total_installments: count,
@@ -86,7 +86,12 @@ export function AddInstallmentDialog({ open, onOpenChange, onInstallmentAdded }:
         paid: false,
         is_split: isSplit,
         split_parts: isSplit ? participants.reduce((sum, p) => sum + p.parts, 0) : 1,
-      })
+      }
+
+      const participantsData =
+        isSplit && participants.length > 0 ? participants.map((p) => ({ name: p.name, parts: p.parts })) : undefined
+
+      await addInstallment(installmentData, participantsData)
 
       // Reset form
       setName("")

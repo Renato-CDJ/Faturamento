@@ -1,6 +1,6 @@
 "use client"
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import type { Income } from "@/lib/types"
@@ -29,9 +29,10 @@ export function IncomeDetailModal({ open, onOpenChange, incomes, month }: Income
       <DialogContent className="max-w-2xl max-h-[80vh]">
         <DialogHeader>
           <DialogTitle>Receitas do Mês</DialogTitle>
-          <p className="text-sm text-muted-foreground">
-            {format(new Date(month + "-01"), "MMMM 'de' yyyy", { locale: ptBR })}
-          </p>
+          <DialogDescription>
+            Visualize todas as receitas registradas em{" "}
+            {format(new Date(month + "-01"), "MMMM 'de' yyyy", { locale: ptBR })}.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">

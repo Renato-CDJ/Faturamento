@@ -1,9 +1,9 @@
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowUpRight, ArrowDownRight, Pencil, Trash2 } from "lucide-react"
+import { ArrowUpRight, ArrowDownRight, Pencil, Trash2, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,30 +15,101 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { useViewMode } from "@/lib/view-mode-context"
+import { useExpenses } from "@/lib/hooks/use-expenses-firebase"
+import { useIncome } from "@/lib/hooks/use-income-firebase"
+import { EditExpenseDialog } from "@/components/edit-expense-dialog"
+import { EditIncomeDialog } from "@/components/edit-income-dialog"
+import { AllTransactionsModal } from "@/components/all-transactions-modal"
+import type { Expense, Income } from "@/lib/types"
+
+type Transaction = {
+  id: string
+  name: string
+  category: string
+  amount: number
+  date: string
+  type: "income" | "expense"
+  originalData: Expense | Income
+}
 
 export function RecentTransactions() {
   const { isEditorMode } = useViewMode()
+  const { expenses, deleteExpense } = useExpenses()
+  const { incomes, deleteIncome } = useIncome()
 
-  const [transactions, setTransactions] = useState([])
-  const [deleteId, setDeleteId] = useState<number | null>(null)
+  const [deleteId, setDeleteId] = useState<{ id: string; type: "income" | "expense" } | null>(null)
+  const [editExpense, setEditExpense] = useState<Expense | null>(null)
+  const [editIncome, setEditIncome] = useState<Income | null>(null)
+  const [editExpenseDialogOpen, setEditExpenseDialogOpen] = useState(false)
+  const [editIncomeDialogOpen, setEditIncomeDialogOpen] = useState(false)
+  const [allTransactionsOpen, setAllTransactionsOpen] = useState(false)
 
-  const handleDelete = () => {
-    if (deleteId !== null) {
-      setTransactions(transactions.filter((transaction) => transaction.id !== deleteId))
+  const transactions = useMemo(() => {
+    const combined: Transaction[] = [
+      ...expenses.map((expense) => ({
+        id: expense.id,
+        name: expense.description,
+        category: expense.category,
+        amount: -expense.amount,
+        date: expense.date,
+        type: "expense" as const,
+        originalData: expense,
+      })),
+      ...incomes.map((income) => ({
+        id: income.id,
+        name: income.source,
+        category: "Receita",
+        amount: income.amount,
+        date: income.date,
+        type: "income" as const,
+        originalData: income,
+      })),
+    ]
+
+    // Sort by date, most recent first
+    combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+    // Return only the 10 most recent
+    return combined.slice(0, 10)
+  }, [expenses, incomes])
+
+  const handleDelete = async () => {
+    if (deleteId) {
+      if (deleteId.type === "expense") {
+        await deleteExpense(deleteId.id)
+      } else {
+        await deleteIncome(deleteId.id)
+      }
       setDeleteId(null)
     }
   }
 
-  const handleEdit = (id: number) => {
-    console.log("[v0] Edit transaction:", id)
+  const handleEdit = (transaction: Transaction) => {
+    if (transaction.type === "expense") {
+      setEditExpense(transaction.originalData as Expense)
+      setEditExpenseDialogOpen(true)
+    } else {
+      setEditIncome(transaction.originalData as Income)
+      setEditIncomeDialogOpen(true)
+    }
   }
 
   return (
     <>
       <Card className="border-border">
         <CardHeader>
-          <CardTitle className="text-foreground">Transações Recentes</CardTitle>
-          <CardDescription className="text-muted-foreground">Suas últimas movimentações financeiras</CardDescription>
+          <div className="flex items-start justify-between">
+            <div>
+              <CardTitle className="text-foreground">Transações Recentes</CardTitle>
+              <CardDescription className="text-muted-foreground">
+                Suas últimas movimentações financeiras
+              </CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setAllTransactionsOpen(true)} className="gap-2">
+              Ver Todas
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {transactions.length === 0 ? (
@@ -48,11 +119,11 @@ export function RecentTransactions() {
           ) : (
             <div className="space-y-3">
               {transactions.map((transaction) => {
-                const Icon = transaction.icon
                 const isIncome = transaction.amount > 0
+                const Icon = isIncome ? ArrowUpRight : ArrowDownRight
                 return (
                   <div
-                    key={transaction.id}
+                    key={`${transaction.type}-${transaction.id}`}
                     className="flex items-center justify-between rounded-lg border border-border p-4 transition-colors hover:bg-muted/50"
                   >
                     <div className="flex items-center gap-4">
@@ -68,20 +139,19 @@ export function RecentTransactions() {
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <span>{transaction.category}</span>
                           <span>•</span>
-                          <span>{transaction.date}</span>
+                          <span>{new Date(transaction.date).toLocaleDateString("pt-BR")}</span>
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
                         <p className={`text-lg font-bold ${isIncome ? "text-accent" : "text-foreground"}`}>
-                          {isIncome ? "+" : ""}R$ {Math.abs(transaction.amount).toFixed(2)}
+                          {isIncome ? "+" : ""}
+                          {Math.abs(transaction.amount).toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })}
                         </p>
-                        {isIncome ? (
-                          <ArrowUpRight className="h-5 w-5 text-accent" />
-                        ) : (
-                          <ArrowDownRight className="h-5 w-5 text-muted-foreground" />
-                        )}
                       </div>
                       {isEditorMode && (
                         <div className="flex gap-1">
@@ -89,7 +159,7 @@ export function RecentTransactions() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => handleEdit(transaction.id)}
+                            onClick={() => handleEdit(transaction)}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -97,7 +167,7 @@ export function RecentTransactions() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-destructive"
-                            onClick={() => setDeleteId(transaction.id)}
+                            onClick={() => setDeleteId({ id: transaction.id, type: transaction.type })}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -111,6 +181,12 @@ export function RecentTransactions() {
           )}
         </CardContent>
       </Card>
+
+      <EditExpenseDialog open={editExpenseDialogOpen} onOpenChange={setEditExpenseDialogOpen} expense={editExpense} />
+
+      <EditIncomeDialog open={editIncomeDialogOpen} onOpenChange={setEditIncomeDialogOpen} income={editIncome} />
+
+      <AllTransactionsModal open={allTransactionsOpen} onOpenChange={setAllTransactionsOpen} />
 
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>

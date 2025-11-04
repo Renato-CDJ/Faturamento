@@ -70,7 +70,7 @@ export function AddDebtDialog({ open, onOpenChange }: AddDebtDialogProps) {
     setIsSubmitting(true)
 
     try {
-      await addDebt({
+      const debtData = {
         name,
         total_amount: Number.parseFloat(total),
         paid_amount: Number.parseFloat(paid) || 0,
@@ -79,8 +79,12 @@ export function AddDebtDialog({ open, onOpenChange }: AddDebtDialogProps) {
         is_split: isSplit,
         split_parts: isSplit ? participants.reduce((sum, p) => sum + p.parts, 0) : 1,
         is_paid: false,
-        participants: isSplit && participants.length > 0 ? participants : undefined,
-      })
+      }
+
+      const participantsData =
+        isSplit && participants.length > 0 ? participants.map((p) => ({ name: p.name, parts: p.parts })) : undefined
+
+      await addDebt(debtData, participantsData)
 
       // Reset form
       setName("")

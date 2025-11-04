@@ -3,10 +3,41 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts"
-
-const data: { month: string; despesas: number; receitas: number }[] = []
+import { useExpenses } from "@/lib/hooks/use-expenses-firebase"
+import { useIncome } from "@/lib/hooks/use-income-firebase"
+import { useMemo } from "react"
 
 export function ExpenseChart() {
+  const { expenses } = useExpenses()
+  const { incomes } = useIncome()
+
+  const data = useMemo(() => {
+    const monthsData: { month: string; despesas: number; receitas: number }[] = []
+    const now = new Date()
+
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+      const monthLabel = date.toLocaleDateString("pt-BR", { month: "short" })
+
+      const monthExpenses = expenses
+        .filter((expense) => expense.date.substring(0, 7) === monthKey)
+        .reduce((sum, expense) => sum + Number(expense.amount), 0)
+
+      const monthIncomes = incomes
+        .filter((income) => income.date.substring(0, 7) === monthKey)
+        .reduce((sum, income) => sum + Number(income.amount), 0)
+
+      monthsData.push({
+        month: monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1),
+        despesas: monthExpenses,
+        receitas: monthIncomes,
+      })
+    }
+
+    return monthsData
+  }, [expenses, incomes])
+
   return (
     <Card className="border-border">
       <CardHeader>
@@ -14,7 +45,7 @@ export function ExpenseChart() {
         <CardDescription className="text-muted-foreground">Receitas vs Despesas nos últimos 6 meses</CardDescription>
       </CardHeader>
       <CardContent>
-        {data.length === 0 ? (
+        {data.length === 0 || data.every((d) => d.despesas === 0 && d.receitas === 0) ? (
           <div className="flex h-[300px] w-full items-center justify-center text-muted-foreground">
             Nenhum dado disponível
           </div>

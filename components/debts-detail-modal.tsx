@@ -1,6 +1,6 @@
 "use client"
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -25,6 +25,9 @@ export function DebtsDetailModal({ open, onOpenChange, debts }: DebtsDetailModal
       <DialogContent className="max-w-2xl max-h-[80vh]">
         <DialogHeader>
           <DialogTitle>Dívidas Totais</DialogTitle>
+          <DialogDescription>
+            Visualize todas as suas dívidas ativas e pagas com detalhes de progresso.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">

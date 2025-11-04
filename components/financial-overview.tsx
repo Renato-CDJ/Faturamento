@@ -34,10 +34,11 @@ export function FinancialOverview({ selectedMonth }: FinancialOverviewProps) {
 
   const totalExpenses = monthExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0)
   const totalIncome = monthIncomes.reduce((sum, income) => sum + Number(income.amount), 0)
-  const totalDebts = debts.reduce((sum, debt) => sum + Number(debt.total_amount - debt.paid_amount), 0)
+  const totalDebts = debts
+    .filter((debt) => !debt.is_paid)
+    .reduce((sum, debt) => sum + Number(debt.total_amount - debt.paid_amount), 0)
 
-  // Only calculate balance if there's actual income, otherwise show 0
-  const balance = monthIncomes.length > 0 ? totalIncome - totalExpenses : 0
+  const balance = totalIncome - totalExpenses
 
   console.log("[v0] Financial Overview - Month:", selectedMonth)
   console.log("[v0] Total Expenses:", totalExpenses, "Count:", monthExpenses.length)
