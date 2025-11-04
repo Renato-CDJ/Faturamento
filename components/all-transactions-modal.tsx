@@ -23,7 +23,6 @@ import { EditExpenseDialog } from "@/components/edit-expense-dialog"
 import { EditIncomeDialog } from "@/components/edit-income-dialog"
 import type { Expense, Income } from "@/lib/types"
 import { format } from "date-fns"
-import { ptBR } from "date-fns/locale"
 
 type Transaction = {
   id: string
@@ -107,7 +106,7 @@ export function AllTransactionsModal({ open, onOpenChange }: AllTransactionsModa
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
+        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
           <DialogHeader className="pb-6">
             <DialogTitle className="text-3xl font-bold">Todas as Transações</DialogTitle>
             <DialogDescription className="text-base">
@@ -115,28 +114,28 @@ export function AllTransactionsModal({ open, onOpenChange }: AllTransactionsModa
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid grid-cols-3 gap-4 mb-4">
-            <div className="rounded-xl bg-gradient-to-br from-accent/15 to-accent/5 border-2 border-accent/30 p-5">
+          <div className="grid grid-cols-3 gap-3 mb-4 shrink-0">
+            <div className="rounded-xl bg-gradient-to-br from-accent/15 to-accent/5 border-2 border-accent/30 p-4">
               <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wide">Receitas</p>
-              <p className="text-2xl font-bold text-accent">
+              <p className="text-xl font-bold text-accent">
                 {totalIncome.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               </p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-destructive/15 to-destructive/5 border-2 border-destructive/30 p-5">
+            <div className="rounded-xl bg-gradient-to-br from-destructive/15 to-destructive/5 border-2 border-destructive/30 p-4">
               <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wide">Despesas</p>
-              <p className="text-2xl font-bold text-destructive">
+              <p className="text-xl font-bold text-destructive">
                 {totalExpenses.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               </p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 border-2 border-primary/30 p-5">
+            <div className="rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 border-2 border-primary/30 p-4">
               <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wide">Saldo</p>
-              <p className={`text-2xl font-bold ${balance >= 0 ? "text-accent" : "text-destructive"}`}>
+              <p className={`text-xl font-bold ${balance >= 0 ? "text-accent" : "text-destructive"}`}>
                 {balance.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               </p>
             </div>
           </div>
 
-          <ScrollArea className="flex-1 pr-4 -mr-4">
+          <ScrollArea className="flex-1 -mr-4">
             {transactions.length === 0 ? (
               <div className="flex h-64 items-center justify-center text-muted-foreground">
                 <div className="text-center">
@@ -145,38 +144,36 @@ export function AllTransactionsModal({ open, onOpenChange }: AllTransactionsModa
                 </div>
               </div>
             ) : (
-              <div className="space-y-3 pb-4">
+              <div className="space-y-3 pb-4 pr-4">
                 {transactions.map((transaction) => {
                   const isIncome = transaction.amount > 0
                   const Icon = isIncome ? ArrowUpRight : ArrowDownRight
                   return (
                     <div
                       key={`${transaction.type}-${transaction.id}`}
-                      className="flex items-center justify-between rounded-xl border-2 border-border bg-card p-5 transition-all hover:bg-muted/50 hover:border-accent hover:shadow-sm"
+                      className="flex items-center gap-4 rounded-xl border-2 border-border bg-card p-4 transition-all hover:bg-muted/50 hover:border-accent hover:shadow-sm overflow-hidden"
                     >
-                      <div className="flex items-center gap-5">
-                        <div
-                          className={`flex h-14 w-14 items-center justify-center rounded-xl ${
-                            isIncome ? "bg-accent/20 text-accent" : "bg-destructive/20 text-destructive"
-                          }`}
-                        >
-                          <Icon className="h-7 w-7" />
-                        </div>
-                        <div className="space-y-1">
-                          <p className="font-bold text-lg text-foreground">{transaction.name}</p>
-                          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                            <Badge variant="outline" className="font-medium">
-                              {transaction.category}
-                            </Badge>
-                            <span>•</span>
-                            <span className="font-medium">
-                              {format(new Date(transaction.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                            </span>
-                          </div>
+                      <div
+                        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
+                          isIncome ? "bg-accent/20 text-accent" : "bg-destructive/20 text-destructive"
+                        }`}
+                      >
+                        <Icon className="h-6 w-6" />
+                      </div>
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <p className="font-bold text-base text-foreground truncate">{transaction.name}</p>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+                          <Badge variant="outline" className="font-medium text-xs">
+                            {transaction.category}
+                          </Badge>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="font-medium text-xs">
+                            {format(new Date(transaction.date), "dd/MM/yyyy")}
+                          </span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <p className={`text-2xl font-bold ${isIncome ? "text-accent" : "text-destructive"}`}>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <p className={`text-lg font-bold ${isIncome ? "text-accent" : "text-destructive"}`}>
                           {isIncome ? "+" : "-"}
                           {Math.abs(transaction.amount).toLocaleString("pt-BR", {
                             style: "currency",
@@ -188,7 +185,7 @@ export function AllTransactionsModal({ open, onOpenChange }: AllTransactionsModa
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-9 w-9"
+                              className="h-8 w-8"
                               onClick={() => handleEdit(transaction)}
                             >
                               <Pencil className="h-4 w-4" />
@@ -196,7 +193,7 @@ export function AllTransactionsModal({ open, onOpenChange }: AllTransactionsModa
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-9 w-9 text-destructive"
+                              className="h-8 w-8 text-destructive"
                               onClick={() => setDeleteId({ id: transaction.id, type: transaction.type })}
                             >
                               <Trash2 className="h-4 w-4" />
